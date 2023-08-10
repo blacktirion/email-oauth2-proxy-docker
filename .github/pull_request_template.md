@@ -8,4 +8,4 @@
 ## Checklist:
   - [ ] The code change is tested and works locally.
 
-**What this Pull Request adds (Not Required if Docker Autobuild request**
+**What this Pull Request adds (Not Required if Docker Autobuild request)**
