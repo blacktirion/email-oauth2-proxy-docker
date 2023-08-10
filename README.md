@@ -57,7 +57,7 @@ To run the email OAuth2 proxy using Docker run, use the following command:
 docker run -d \
     --name emailproxy \
     -e DEBUG=false \
-    -e CACHE_STORE=/config/credstore.config 
+    -e CACHE_STORE=/config/credstore.config \
     -e LOGFILE=true \
     -e LOCAL_SERVER_AUTH=true \
     -v /path/to/host/config:/config \
