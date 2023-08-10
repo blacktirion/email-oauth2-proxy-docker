@@ -1,4 +1,4 @@
-# email-oauth2-proxy-docker
+# Email OAuth 2.0 Proxy - Docker
 Dockerized Version of [simonrob/email-oauth2-proxy.](https://github.com/simonrob/email-oauth2-proxy/) This runs in --no-gui mode.
 
 
