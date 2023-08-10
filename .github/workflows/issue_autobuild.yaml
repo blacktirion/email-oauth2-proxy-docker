@@ -36,14 +36,19 @@ jobs:
         run: |
           current_date=$(date +'%Y.%m.%d')
           existing_version="${{ env.existing_version }}"
-          version="$current_date"
 
-          while [[ "$existing_version" == "$version" ]]; do
-            version_parts=(${version//./ }) 
-            subversion=${version_parts[3]:-0}  # Get the existing subversion or set to 0 if absent
+          version_parts=(${existing_version//./ })
+          subversion=${version_parts[3]:-0}  # Get the existing subversion or set to 0 if absent
+
+          if [[ "$subversion" != "0" && "${existing_version%.*}" == "$current_date" ]]; then
+            incremented_subversion=$((subversion + 1))
+            version="${existing_version%.*}.$incremented_subversion"
+          elif [[ "$existing_version" == "$current_date" ]]; then
             incremented_subversion=$((subversion + 1))
             version="$current_date.$incremented_subversion"
-          done
+          else
+            version="$current_date"
+          fi
 
           echo "version=$version" >> $GITHUB_ENV
 
