@@ -69,6 +69,7 @@ jobs:
         if: env.has_label == 'true'
         run: |
           docker build . -t ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ env.version }}
+          docker tag ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ env.version }} ghcr.io/blacktirion/email-oauth2-proxy-docker:latest
 
       - name: Push image
         if: env.has_label == 'true'
