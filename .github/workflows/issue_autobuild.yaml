@@ -51,6 +51,7 @@ jobs:
         if: env.has_label == 'true'
         run: |
           echo "${{ steps.generate-version.outputs.version }}" > .github/autobuild_version
+          cat ./github/autobuild_version
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           git add .github/autobuild_version
