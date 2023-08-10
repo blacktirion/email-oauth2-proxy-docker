@@ -11,7 +11,9 @@ jobs:
     steps:
       - name: Check if issue has the "docker-autobuild" label
         id: check-label
-        run: echo "has_label=$(jq '.[].name | select(. == \"docker-autobuild\")' <<< '${{ toJson(github.event.issue.labels) }}')" >> $GITHUB_ENV
+        run: |
+          has_label=$(jq '.[].name | select(. == "docker-autobuild")' <<< '${{ toJson(github.event.issue.labels) }}')
+          echo "has_label=$has_label" >> $GITHUB_ENV
 
       - name: Retrieve existing version from file
         id: retrieve-version
