@@ -1,4 +1,4 @@
-name: Publish Docker image
+name: Issue Autobuild Workflow
 
 on:
   issues:
@@ -13,6 +13,35 @@ jobs:
         id: check-label
         run: echo "::set-output name=has_label::$(echo ${{ github.event.issue.labels }} | grep -c 'docker-autobuild')"
 
+      - name: Retrieve existing version from file
+        id: retrieve-version
+        if: steps.check-label.outputs.has_label == '1'
+        run: |
+          # Read the existing version from the version file
+          existing_version=$(cat .github/autobuild_version 2>/dev/null || echo "0")
+          echo "::set-output name=existing_version::$existing_version"
+
+      - name: Generate semantic version from current date and increment if necessary
+        id: generate-version
+        if: steps.check-label.outputs.has_label == '1'
+        run: |
+          # Generate a semantic version based on the current date
+          current_date=$(date +'%Y%m%d')
+          existing_version=${{ steps.retrieve-version.outputs.existing_version }}
+
+          if [[ "$existing_version" == "$current_date" ]]; then
+            version=$(cat .github/autobuild_version || echo "0")
+            version=$((version + 1))
+          else
+            version="$current_date"
+          fi
+          echo "::set-output name=version::$version"
+
+      - name: Save generated version to file
+        if: steps.check-label.outputs.has_label == '1'
+        run: |
+          echo "${{ steps.generate-version.outputs.version }}" > .github/autobuild_version
+
       - name: Checkout code
         if: steps.check-label.outputs.has_label == '1'
         uses: actions/checkout@v2
@@ -24,7 +53,8 @@ jobs:
 
       - name: Build image
         if: steps.check-label.outputs.has_label == '1'
-        run: docker build . -t ghcr.io/blacktirion/email-oauth2-proxy-docker
+        run: |
+          docker build . -t ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ steps.generate-version.outputs.version }}
 
       - name: Publish image
         if: steps.check-label.outputs.has_label == '1'
@@ -36,6 +66,5 @@ jobs:
 
       - name: Push image
         if: steps.check-label.outputs.has_label == '1'
-        run: docker push ghcr.io/blacktirion/email-oauth2-proxy-docker
-
-
+        run: |
+          docker push ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ steps.generate-version.outputs.version }}
