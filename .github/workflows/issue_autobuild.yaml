@@ -19,6 +19,10 @@ jobs:
           fi
           echo "has_label=$has_label" >> $GITHUB_ENV
 
+      - name: Checkout code
+        if: env.has_label == 'true'
+        uses: actions/checkout@v2
+
       - name: Retrieve existing version from file
         id: retrieve-version
         if: env.has_label == 'true'
@@ -46,10 +50,11 @@ jobs:
         if: env.has_label == 'true'
         run: |
           echo "${{ steps.generate-version.outputs.version }}" > .github/autobuild_version
-
-      - name: Checkout code
-        if: env.has_label == 'true'
-        uses: actions/checkout@v2
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git add .github/autobuild_version
+          git commit -m "Update autobuild_version"
+          git push origin $GITHUB_REF
 
       - name: Download dependencies
         if: env.has_label == 'true'
