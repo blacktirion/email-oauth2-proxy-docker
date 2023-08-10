@@ -1,0 +1,41 @@
+name: Publish Docker image
+
+on:
+  issues:
+    types:
+      - opened
+
+jobs:
+  autobuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if issue has the "docker-autobuild" label
+        id: check-label
+        run: echo "::set-output name=has_label::$(echo ${{ github.event.issue.labels }} | grep -c 'docker-autobuild')"
+
+      - name: Checkout code
+        if: steps.check-label.outputs.has_label == '1'
+        uses: actions/checkout@v2
+
+      - name: Download dependencies
+        if: steps.check-label.outputs.has_label == '1'
+        run: |
+          curl -o emailproxy.py https://raw.githubusercontent.com/simonrob/email-oauth2-proxy/main/emailproxy.py
+
+      - name: Build image
+        if: steps.check-label.outputs.has_label == '1'
+        run: docker build . -t ghcr.io/blacktirion/email-oauth2-proxy-docker
+
+      - name: Publish image
+        if: steps.check-label.outputs.has_label == '1'
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        if: steps.check-label.outputs.has_label == '1'
+        run: docker push ghcr.io/blacktirion/email-oauth2-proxy-docker
+
+
