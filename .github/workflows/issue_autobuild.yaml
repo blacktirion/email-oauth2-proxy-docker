@@ -30,20 +30,21 @@ jobs:
           existing_version=$(cat .github/autobuild_version 2>/dev/null || echo "0")
           echo "existing_version=$existing_version" >> $GITHUB_ENV
 
-      - name: Generate semantic version from current date and increment if necessary
+      - name: Generate version based on Date Versioning (YYYY.MM.DD)
         id: generate-version
         if: env.has_label == 'true'
         run: |
           current_date=$(date +'%Y.%m.%d')
-          existing_version="${{ steps.retrieve-version.outputs.existing_version }}"
+          existing_version="${{ env.existing_version }}"
+          version="$current_date"
 
-          if [[ "$existing_version" == "$current_date" ]]; then
-            version_parts=(${existing_version//./ })  # Split existing version into parts
-            incremented_version=${version_parts[0]}.${version_parts[1]}.$((${version_parts[2]} + 1))
-            version="$incremented_version"
-          else
-            version="$current_date"
-          fi
+          while [[ "$existing_version" == "$version" ]]; do
+            version_parts=(${version//./ }) 
+            subversion=${version_parts[3]:-0}  # Get the existing subversion or set to 0 if absent
+            incremented_subversion=$((subversion + 1))
+            version="$current_date.$incremented_subversion"
+          done
+
           echo "version=$version" >> $GITHUB_ENV
 
       - name: Save generated version to file
