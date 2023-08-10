@@ -34,12 +34,13 @@ jobs:
         id: generate-version
         if: env.has_label == 'true'
         run: |
-          current_date=$(date +'%Y%m%d')
+          current_date=$(date +'%Y.%m.%d')
           existing_version="${{ steps.retrieve-version.outputs.existing_version }}"
 
           if [[ "$existing_version" == "$current_date" ]]; then
-            version=$(cat .github/autobuild_version || echo "0")
-            version=$((version + 1))
+            version_parts=(${existing_version//./ })  # Split existing version into parts
+            incremented_version=${version_parts[0]}.${version_parts[1]}.$((${version_parts[2]} + 1))
+            version="$incremented_version"
           else
             version="$current_date"
           fi
