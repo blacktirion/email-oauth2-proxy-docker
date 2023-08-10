@@ -13,7 +13,7 @@ jobs:
         run: |
           curl -o emailproxy.py https://raw.githubusercontent.com/simonrob/email-oauth2-proxy/main/emailproxy.py
       - name: Build image
-        run: docker build . -t email-oauth2-proxy-docker
+        run: docker build . -t ghcr.io/blacktirion/email-oauth2-proxy-docker
       - name: Publish image
         uses: docker/login-action@v1
         with:
