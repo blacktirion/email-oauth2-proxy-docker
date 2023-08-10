@@ -2,7 +2,7 @@
 Dockerized Version of [Email OAuth 2.0 Proxy](https://github.com/simonrob/email-oauth2-proxy/) This runs in --no-gui mode.
 
 ## Docker Updates
-This repository has an automated method that will rebuild the docker container if an issue is opened (see the issues tab). This is to accommodate any changes to the python in on [Email OAuth 2.0 Proxy](https://github.com/simonrob/email-oauth2-proxy/). If this docker image is out of date, please submit that request and it will build automatically.
+This repository has an automated method that will rebuild the docker container if an issue is opened (see the issues tab). This is to accommodate any changes to the python on [Email OAuth 2.0 Proxy](https://github.com/simonrob/email-oauth2-proxy/). If this docker image is out of date, please submit that request and it will build automatically.
 
 
 ## Config File Placement
