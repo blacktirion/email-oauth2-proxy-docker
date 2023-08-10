@@ -1,6 +1,9 @@
 # Email OAuth 2.0 Proxy - Docker
 Dockerized Version of [Email OAuth 2.0 Proxy](https://github.com/simonrob/email-oauth2-proxy/) This runs in --no-gui mode.
 
+## Docker Updates
+This repository has an automated method that will rebuild the docker container if an issue is opened (see the issues tab). This is to accommodate any changes to the python in on [Email OAuth 2.0 Proxy](https://github.com/simonrob/email-oauth2-proxy/). If this docker image is out of date, please submit that request and it will build automatically.
+
 
 ## Config File Placement
 ###
@@ -18,7 +21,7 @@ version: '3.7'
 
 services:
   emailproxy:
-    image: ghcr.io/blacktirion/email-oauth2-proxy-docker
+    image: blacktirion/email-oauth2-proxy-docker # ghcr.io optional. this is published on both Docker Hub and Github Container Repository
     container_name: emailproxy
     volumes:
       /path/to/config:/config
@@ -54,12 +57,12 @@ To run the email OAuth2 proxy using Docker run, use the following command:
 docker run -d \
     --name emailproxy \
     -e DEBUG=false \
-    -e CACHE_STORE=/config/credstore.config
+    -e CACHE_STORE=/config/credstore.config 
     -e LOGFILE=true \
     -e LOCAL_SERVER_AUTH=true \
     -v /path/to/host/config:/config \
     -p 1993:1993 \
-    ghcr.io/blacktirion/email-oauth2-proxy-docker
+    blacktirion/email-oauth2-proxy-docker
 ```
 
 
@@ -76,4 +79,4 @@ This will create a new container with the email OAuth2 proxy and start it. The p
 |Volume| `/path/to/host/config:/config` | Maps the `/config` directory in the container to a local folder/location. |
 |Ports| `1993:1993` | Allows the docker daemon to forward all requests to the container on this port. This may change, depending on if you are using POP3 or other proxy methods. This particular method is for IMAP. |
 |Ports| `8080:80` | Allows the docker daemon to forward all requests to the container on port 8080 and map to the proxy on port 80. Useful for the `LOCAL_SERVER_AUTH` flag. |
-|Image| `ghcr.io/blacktirion/email-oauth2-proxy-docker` | The location/name of the image. |
+|Image| `ghcr.io/blacktirion/email-oauth2-proxy-docker` or `blacktirion/email-oauth2-proxy-docker` | The location/name of the image. This is published on both Github Container Repository as well as Docker Hub.|
