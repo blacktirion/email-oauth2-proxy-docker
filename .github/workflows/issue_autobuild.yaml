@@ -74,6 +74,8 @@ jobs:
           docker build . -t email-oauth2-proxy-docker
           docker tag email-oauth2-proxy-docker ghcr.io/blacktirion/email-oauth2-proxy-docker:latest
           docker tag email-oauth2-proxy-docker ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ env.version }}
+          docker tag email-oauth2-proxy-docker blacktirion/email-oauth2-proxy-docker:${{ env.version }}
+          docker tag email-oauth2-proxy-docker blacktirion/email-oauth2-proxy-docker:latest
 
       - name: Push image
         if: env.has_label == 'true'
@@ -81,4 +83,7 @@ jobs:
           docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
           docker push ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ env.version }}
           docker push ghcr.io/blacktirion/email-oauth2-proxy-docker:latest
+          docker login docker.io -u ${{ secrets.DOCKERHUB_USERNAME }} -p "${{ secrets.DOCKERHUB_TOKEN }}"
+          docker push blacktirion/email-oauth2-proxy-docker:${{ env.version }}
+          docker push blacktirion/email-oauth2-proxy-docker:latest
 
