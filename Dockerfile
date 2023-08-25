@@ -9,6 +9,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir \
     cryptography \
     pyasyncore \
+    boto3 \
     prompt_toolkit
 
 # Copy the Python script and shell script into the container
