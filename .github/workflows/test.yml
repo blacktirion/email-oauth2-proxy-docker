@@ -1,0 +1,23 @@
+name: Test Workflow
+
+on:
+  issues:
+    types:
+      - opened
+
+jobs:
+  autobuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if issue has the "docker-autobuild" label
+        id: check-label
+        run: |
+          if jq '.[] | select(.name == "docker-autobuild")' <<< '${{ toJson(github.event.issue.labels) }}'; then
+            has_label="true"
+          else
+            has_label="false"
+          fi
+          echo "has_label=$has_label" >> $GITHUB_ENV
+      - name: Checkout code
+        if: env.has_label == 'true'
+        uses: actions/checkout@v2
