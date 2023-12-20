@@ -8,7 +8,7 @@ on:
 jobs:
   autobuild:
     runs-on: ubuntu-latest
-    if: github.event.issue.labels | contains:'docker-autobuild'
+    if: github.event.issue.labels contains 'docker-autobuild'
     steps:
       - name: Check if issue has the "docker-autobuild" label
         id: check-label
