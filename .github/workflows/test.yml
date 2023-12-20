@@ -8,12 +8,11 @@ on:
 jobs:
   autobuild:
     runs-on: ubuntu-latest
-    if: github.event.issue.labels contains 'docker-autobuild'
     steps:
       - name: Check if issue has the "docker-autobuild" label
         id: check-label
         run: |
-          if jq 'any(.[]; .name == "docker-autobuild")' <<< '${{ toJson(github.event.issue.labels) }}'; then
+          if [[ "$(gh api issues/\$GITHUB_ISSUE_NUMBER/labels | jq '.[].name' | grep -E 'docker-autobuild')" ]]; then
             has_label="true"
           else
             has_label="false"
