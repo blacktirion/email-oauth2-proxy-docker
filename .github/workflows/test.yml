@@ -12,7 +12,7 @@ jobs:
       - name: Check if issue has the "docker-autobuild" label
         id: check-label
         run: |
-          if jq '.[].name | contains ("docker-autobuild")' <<< '${{ toJson(github.event.issue.labels) }}'; then
+          if jq '.[].name | all(. != "docker-autobuild")' <<< '${{ toJson(github.event.issue.labels) }}'; then
             has_label="true"
           else
             has_label="false"
