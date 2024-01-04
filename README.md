@@ -68,6 +68,11 @@ docker run -d \
 
 This will create a new container with the email OAuth2 proxy and start it. The proxy will be listening on port 1993.
 
+### Windows Support 
+@gerneio [opened an issue regarding native windows support](https://github.com/blacktirion/email-oauth2-proxy-docker/issues/22). I do not use containers in windows, but he did put together a basic guide that can get you started. I will leave that issue open and pinned for now, just in case there are other questions. I cannot support this directly, as I am not familiar with windows docker images, but I will reply in thread if questions are asked. It seems pretty straightforward.
+
+
+
 ## All Flags and Options
 | Type | Flag | Description |
 |---|---|---|
