@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir \
     boto3 \
     prompt_toolkit \
     google-auth \
-		requests
+	requests
 
 # Copy the Python script and shell script into the container
 COPY emailproxy.py /app/
