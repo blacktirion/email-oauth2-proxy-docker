@@ -10,8 +10,7 @@ RUN pip install --no-cache-dir \
     cryptography \
     pyasyncore \
     boto3 \
-    prompt_toolkit
-    requests \
+    prompt_toolkit \
     google-auth
 
 # Copy the Python script and shell script into the container
