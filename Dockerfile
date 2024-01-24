@@ -11,7 +11,8 @@ RUN pip install --no-cache-dir \
     pyasyncore \
     boto3 \
     prompt_toolkit \
-    google-auth
+    google-auth \
+		requests
 
 # Copy the Python script and shell script into the container
 COPY emailproxy.py /app/
