@@ -1,109 +1,128 @@
-name: Issue Autobuild Workflow (Git-tag versioning)
+name: Issue Autobuild Workflow
 
 on:
   issues:
-    types:
-      - opened
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      skip_push:
+        description: 'Set to true to run build steps without pushing tags or images'
+        required: false
+        default: 'false'
 
-permissions:
-  contents: write  # required to push tags
-  id-token: write
-  packages: write
+concurrency:
+  group: 'autobuild-${{ github.repository }}'
+  cancel-in-progress: false
 
 jobs:
-  autobuild:
+  check-issue-label:
     runs-on: ubuntu-latest
-    env:
-      UPSTREAM_RAW: https://raw.githubusercontent.com/simonrob/email-oauth2-proxy/main/emailproxy.py
+    outputs:
+      has_label: ${{ steps.check-label.outputs.has_label }}
     steps:
-      - name: Check if issue has the "docker-autobuild" label
+      - name: Check if issue has the "docker-autobuild" label or allow manual runs
         id: check-label
         run: |
-          if jq '.[].name | select(. == "docker-autobuild")' <<< '${{ toJson(github.event.issue.labels) }}'; then
-            has_label="true"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            echo "has_label=true" >> "$GITHUB_OUTPUT"
           else
-            has_label="false"
+            if jq '.[].name | select(. == "docker-autobuild")' <<< '${{ toJson(github.event.issue.labels) }}'; then
+              echo "has_label=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "has_label=false" >> "$GITHUB_OUTPUT"
+            fi
           fi
-          echo "has_label=$has_label" >> $GITHUB_ENV
 
-      - name: Checkout full repo (fetch tags)
-        if: env.has_label == 'true'
+  autobuild-if-issue:
+    needs: check-issue-label
+    runs-on: ubuntu-latest
+    if: ${{ needs.check-issue-label.outputs.has_label == 'true' }}
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code (full history for tags)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Compute date-based version tag
-        if: env.has_label == 'true'
-        id: compute-version
+      - name: Set SKIP_PUSH (from workflow_dispatch input)
+        run: |
+          SKIP_PUSH="${{ github.event.inputs.skip_push || 'false' }}"
+          echo "SKIP_PUSH=$SKIP_PUSH" >> $GITHUB_ENV
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker.io (if credentials provided)
+        if: ${{ secrets.DOCKERHUB_TOKEN != '' }}
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Fetch tags
+        run: |
+          # ensure we can list tags (works for shallow clones too)
+          git fetch --prune --unshallow || true
+          git fetch --tags origin || true
+
+      - name: Generate date-based version tag (YYYY.MM.DD.N)
+        id: generate-version
         run: |
           DATE=$(date +"%Y.%m.%d")
-          # fetch remote tags
-          git fetch --tags origin || true
-          # list tags starting with DATE or DATE.*
-          TAGS=$(git tag -l "${DATE}*" || true)
+          TAGS=$(git tag -l "${DATE}*")
           if [ -z "$TAGS" ]; then
-            # No existing tag for today -> use bare date
-            VERSION="$DATE"
+            NEXT=1
           else
-            # Determine highest numeric suffix among tags like DATE.N
             MAX=0
             for t in $TAGS; do
-              # If tag equals DATE, treat as base and consider NEXT=1
-              if [ "$t" = "$DATE" ]; then
-                n=0
-              else
-                # extract suffix after last dot
-                n=${t##*.}
-                case "$n" in
-                  ''|*[!0-9]*) n=0;;
-                esac
+              SFX=${t##*.}
+              if [[ "$SFX" =~ ^[0-9]+$ ]]; then
+                if [ "$SFX" -gt "$MAX" ]; then MAX=$SFX; fi
               fi
-              if [ "$n" -gt "$MAX" ]; then MAX=$n; fi
             done
             NEXT=$((MAX + 1))
-            VERSION="${DATE}.${NEXT}"
           fi
+          VERSION="${DATE}.${NEXT}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Computed version: $VERSION"
+          echo "Computed VERSION=$VERSION"
 
-      - name: Create and push git tag
-        if: env.has_label == 'true'
+      - name: Create annotated tag (skip if SKIP_PUSH=true)
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          # create annotated tag if it doesn't already exist
-          if git rev-parse "$VERSION" >/dev/null 2>&1; then
-            echo "Tag $VERSION already exists locally"
-          else
-            git tag -a "$VERSION" -m "autobuild $VERSION"
+          if [ "$SKIP_PUSH" = "true" ]; then
+            echo "Skipping tag creation because SKIP_PUSH=true"
+            exit 0
           fi
-          git push origin "$VERSION" || echo "Tag push failed (check permissions)"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git tag -a "$VERSION" -m "autobuild $VERSION"
+          git push origin "$VERSION"
 
-      - name: Download upstream file
-        if: env.has_label == 'true'
+      - name: Download upstream dependency (emailproxy.py)
         run: |
-          curl -sL "$UPSTREAM_RAW" -o emailproxy.py
+          # Consider pinning to upstream tag/commit for more safety; currently pulls main
+          curl -fsSL -o emailproxy.py https://raw.githubusercontent.com/simonrob/email-oauth2-proxy/main/emailproxy.py
 
-      - name: Build image
-        if: env.has_label == 'true'
-        run: |
-          docker build . -t email-oauth2-proxy-docker
-          docker tag email-oauth2-proxy-docker ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ env.VERSION }}
-          docker tag email-oauth2-proxy-docker ghcr.io/blacktirion/email-oauth2-proxy-docker:latest
-          docker tag email-oauth2-proxy-docker blacktirion/email-oauth2-proxy-docker:${{ env.VERSION }}
-          docker tag email-oauth2-proxy-docker blacktirion/email-oauth2-proxy-docker:latest
-
-      - name: Push image
-        if: env.has_label == 'true'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # GHCR login using GITHUB_TOKEN works if permissions allow; otherwise configure a PAT
-          echo "Pushing images (requires appropriate secrets)"
-          echo "Ensure secrets.DOCKERHUB_USERNAME and DOCKERHUB_TOKEN exist for Docker Hub pushes"
-          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} || true
-          docker push ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ env.VERSION }} || true
-          docker push ghcr.io/blacktirion/email-oauth2-proxy-docker:latest || true
-          docker login docker.io -u ${{ secrets.DOCKERHUB_USERNAME }} -p "${{ secrets.DOCKERHUB_TOKEN }}" || true
-          docker push blacktirion/email-oauth2-proxy-docker:${{ env.VERSION }} || true
-          docker push blacktirion/email-oauth2-proxy-docker:latest || true
+      - name: Build and optionally push images (multi-arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ env.SKIP_PUSH != 'true' }}
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ env.VERSION }}
+            docker.io/${{ github.repository }}:latest
+            docker.io/${{ github.repository }}:${{ env.VERSION }}
