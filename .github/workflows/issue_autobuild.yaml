@@ -6,10 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       skip_push:
-        description: 'Set to true to run build steps without pushing tags or images'
+        description: "Set to true to run build steps without pushing tags or images"
         required: false
-        default: 'false'
-
+        default: "false"
 concurrency:
   group: 'autobuild-${{ github.repository }}'
   cancel-in-progress: false
