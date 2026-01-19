@@ -25,4 +25,4 @@ jobs:
           echo $has_label
       - name: Checkout code
         if: env.has_label == 'true'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
