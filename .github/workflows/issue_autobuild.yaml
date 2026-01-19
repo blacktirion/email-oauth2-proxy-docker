@@ -64,11 +64,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Prepare Docker Hub credentials flag
+        run: |
+          # Evaluate presence of Docker Hub secrets and export HAS_DOCKERHUB for conditional step
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "HAS_DOCKERHUB=true" >> $GITHUB_ENV
+          else
+            echo "HAS_DOCKERHUB=false" >> $GITHUB_ENV
+          fi
+
       - name: Log in to Docker.io (if credentials provided)
-        if: ${{ secrets.DOCKERHUB_TOKEN != '' }}
+        if: ${{ env.HAS_DOCKERHUB == 'true' }}
         uses: docker/login-action@v3
         with:
-          registry: docker.io
+          registry: https://docker.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
@@ -112,7 +121,6 @@ jobs:
 
       - name: Download upstream dependency (emailproxy.py)
         run: |
-          # Consider pinning to upstream tag/commit for more safety; currently pulls main
           curl -fsSL -o emailproxy.py https://raw.githubusercontent.com/simonrob/email-oauth2-proxy/main/emailproxy.py
 
       - name: Build and optionally push images (multi-arch)
