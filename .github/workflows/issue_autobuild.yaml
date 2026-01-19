@@ -1,13 +1,20 @@
-name: Issue Autobuild Workflow
+name: Issue Autobuild Workflow (Git-tag versioning)
 
 on:
   issues:
     types:
       - opened
 
+permissions:
+  contents: write  # required to push tags
+  id-token: write
+  packages: write
+
 jobs:
   autobuild:
     runs-on: ubuntu-latest
+    env:
+      UPSTREAM_RAW: https://raw.githubusercontent.com/simonrob/email-oauth2-proxy/main/emailproxy.py
     steps:
       - name: Check if issue has the "docker-autobuild" label
         id: check-label
@@ -19,71 +26,84 @@ jobs:
           fi
           echo "has_label=$has_label" >> $GITHUB_ENV
 
-      - name: Checkout code
+      - name: Checkout full repo (fetch tags)
         if: env.has_label == 'true'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Retrieve existing version from file
-        id: retrieve-version
+      - name: Compute date-based version tag
         if: env.has_label == 'true'
+        id: compute-version
         run: |
-          existing_version=$(cat .github/autobuild_version 2>/dev/null || echo "0")
-          echo "existing_version=$existing_version" >> $GITHUB_ENV
-
-      - name: Generate version based on Date Versioning (YYYY.MM.DD)
-        id: generate-version
-        if: env.has_label == 'true'
-        run: |
-          current_date=$(date +'%Y.%m.%d')
-          existing_version="${{ env.existing_version }}"
-
-          version_parts=(${existing_version//./ })
-          subversion=${version_parts[3]:-0}  # Get the existing subversion or set to 0 if absent
-
-          if [[ "$subversion" != "0" && "${existing_version%.*}" == "$current_date" ]]; then
-            incremented_subversion=$((subversion + 1))
-            version="${existing_version%.*}.$incremented_subversion"
-          elif [[ "$existing_version" == "$current_date" ]]; then
-            incremented_subversion=$((subversion + 1))
-            version="$current_date.$incremented_subversion"
+          DATE=$(date +"%Y.%m.%d")
+          # fetch remote tags
+          git fetch --tags origin || true
+          # list tags starting with DATE or DATE.*
+          TAGS=$(git tag -l "${DATE}*" || true)
+          if [ -z "$TAGS" ]; then
+            # No existing tag for today -> use bare date
+            VERSION="$DATE"
           else
-            version="$current_date"
+            # Determine highest numeric suffix among tags like DATE.N
+            MAX=0
+            for t in $TAGS; do
+              # If tag equals DATE, treat as base and consider NEXT=1
+              if [ "$t" = "$DATE" ]; then
+                n=0
+              else
+                # extract suffix after last dot
+                n=${t##*.}
+                case "$n" in
+                  ''|*[!0-9]*) n=0;;
+                esac
+              fi
+              if [ "$n" -gt "$MAX" ]; then MAX=$n; fi
+            done
+            NEXT=$((MAX + 1))
+            VERSION="${DATE}.${NEXT}"
           fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Computed version: $VERSION"
 
-          echo "version=$version" >> $GITHUB_ENV
-
-      - name: Save generated version to file
-        id: save-version
+      - name: Create and push git tag
         if: env.has_label == 'true'
         run: |
-          echo "${{ env.version }}" > .github/autobuild_version
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git add .github/autobuild_version
-          git commit -m "Update autobuild_version"
-          git push origin $GITHUB_REF
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # create annotated tag if it doesn't already exist
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists locally"
+          else
+            git tag -a "$VERSION" -m "autobuild $VERSION"
+          fi
+          git push origin "$VERSION" || echo "Tag push failed (check permissions)"
 
-      - name: Download dependencies
+      - name: Download upstream file
         if: env.has_label == 'true'
         run: |
-          curl -o emailproxy.py https://raw.githubusercontent.com/simonrob/email-oauth2-proxy/main/emailproxy.py
+          curl -sL "$UPSTREAM_RAW" -o emailproxy.py
 
       - name: Build image
         if: env.has_label == 'true'
         run: |
           docker build . -t email-oauth2-proxy-docker
+          docker tag email-oauth2-proxy-docker ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ env.VERSION }}
           docker tag email-oauth2-proxy-docker ghcr.io/blacktirion/email-oauth2-proxy-docker:latest
-          docker tag email-oauth2-proxy-docker ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ env.version }}
-          docker tag email-oauth2-proxy-docker blacktirion/email-oauth2-proxy-docker:${{ env.version }}
+          docker tag email-oauth2-proxy-docker blacktirion/email-oauth2-proxy-docker:${{ env.VERSION }}
           docker tag email-oauth2-proxy-docker blacktirion/email-oauth2-proxy-docker:latest
 
       - name: Push image
         if: env.has_label == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-          docker push ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ env.version }}
-          docker push ghcr.io/blacktirion/email-oauth2-proxy-docker:latest
-          docker login docker.io -u ${{ secrets.DOCKERHUB_USERNAME }} -p "${{ secrets.DOCKERHUB_TOKEN }}"
-          docker push blacktirion/email-oauth2-proxy-docker:${{ env.version }}
-          docker push blacktirion/email-oauth2-proxy-docker:latest
-
+          # GHCR login using GITHUB_TOKEN works if permissions allow; otherwise configure a PAT
+          echo "Pushing images (requires appropriate secrets)"
+          echo "Ensure secrets.DOCKERHUB_USERNAME and DOCKERHUB_TOKEN exist for Docker Hub pushes"
+          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }} || true
+          docker push ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ env.VERSION }} || true
+          docker push ghcr.io/blacktirion/email-oauth2-proxy-docker:latest || true
+          docker login docker.io -u ${{ secrets.DOCKERHUB_USERNAME }} -p "${{ secrets.DOCKERHUB_TOKEN }}" || true
+          docker push blacktirion/email-oauth2-proxy-docker:${{ env.VERSION }} || true
+          docker push blacktirion/email-oauth2-proxy-docker:latest || true
