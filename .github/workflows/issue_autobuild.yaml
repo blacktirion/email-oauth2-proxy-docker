@@ -2,88 +2,137 @@ name: Issue Autobuild Workflow
 
 on:
   issues:
-    types:
-      - opened
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      skip_push:
+        description: "Set to true to run build steps without pushing tags or images"
+        required: false
+        default: "false"
+concurrency:
+  group: 'autobuild-${{ github.repository }}'
+  cancel-in-progress: false
+
+env:
+  DOCKERHUB_IMAGE_NAME: "docker.io/blacktirion/email-oauth2-proxy-docker"
 
 jobs:
-  autobuild:
+  check-issue-label:
     runs-on: ubuntu-latest
+    outputs:
+      has_label: ${{ steps.check-label.outputs.has_label }}
     steps:
-      - name: Check if issue has the "docker-autobuild" label
+      - name: Check if issue has the "docker-autobuild" label or allow manual runs
         id: check-label
         run: |
-          if jq '.[].name | select(. == "docker-autobuild")' <<< '${{ toJson(github.event.issue.labels) }}'; then
-            has_label="true"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            echo "has_label=true" >> "$GITHUB_OUTPUT"
           else
-            has_label="false"
+            if jq '.[].name | select(. == "docker-autobuild")' <<< '${{ toJson(github.event.issue.labels) }}'; then
+              echo "has_label=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "has_label=false" >> "$GITHUB_OUTPUT"
+            fi
           fi
-          echo "has_label=$has_label" >> $GITHUB_ENV
 
-      - name: Checkout code
-        if: env.has_label == 'true'
-        uses: actions/checkout@v2
+  autobuild-if-issue:
+    needs: check-issue-label
+    runs-on: ubuntu-latest
+    if: ${{ needs.check-issue-label.outputs.has_label == 'true' }}
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code (full history for tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Retrieve existing version from file
-        id: retrieve-version
-        if: env.has_label == 'true'
+      - name: Set SKIP_PUSH (from workflow_dispatch input)
         run: |
-          existing_version=$(cat .github/autobuild_version 2>/dev/null || echo "0")
-          echo "existing_version=$existing_version" >> $GITHUB_ENV
+          SKIP_PUSH="${{ github.event.inputs.skip_push || 'false' }}"
+          echo "SKIP_PUSH=$SKIP_PUSH" >> $GITHUB_ENV
 
-      - name: Generate version based on Date Versioning (YYYY.MM.DD)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Detect Docker Hub credentials
+        id: detect_dockerhub
+        run: |
+          if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "has_dockerhub=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_dockerhub=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Log in to Docker.io (if credentials provided)
+        if: ${{ steps.detect_dockerhub.outputs.has_dockerhub == 'true' }}
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Fetch tags
+        run: |
+          # ensure we can list tags (works for shallow clones too)
+          git fetch --prune --unshallow || true
+          git fetch --tags origin || true
+
+      - name: Generate date-based version tag (YYYY.MM.DD.N)
         id: generate-version
-        if: env.has_label == 'true'
         run: |
-          current_date=$(date +'%Y.%m.%d')
-          existing_version="${{ env.existing_version }}"
-
-          version_parts=(${existing_version//./ })
-          subversion=${version_parts[3]:-0}  # Get the existing subversion or set to 0 if absent
-
-          if [[ "$subversion" != "0" && "${existing_version%.*}" == "$current_date" ]]; then
-            incremented_subversion=$((subversion + 1))
-            version="${existing_version%.*}.$incremented_subversion"
-          elif [[ "$existing_version" == "$current_date" ]]; then
-            incremented_subversion=$((subversion + 1))
-            version="$current_date.$incremented_subversion"
+          DATE=$(date +"%Y.%m.%d")
+          TAGS=$(git tag -l "${DATE}*")
+          if [ -z "$TAGS" ]; then
+            NEXT=1
           else
-            version="$current_date"
+            MAX=0
+            for t in $TAGS; do
+              SFX=${t##*.}
+              if [[ "$SFX" =~ ^[0-9]+$ ]]; then
+                if [ "$SFX" -gt "$MAX" ]; then MAX=$SFX; fi
+              fi
+            done
+            NEXT=$((MAX + 1))
           fi
+          VERSION="${DATE}.${NEXT}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "Computed VERSION=$VERSION"
 
-          echo "version=$version" >> $GITHUB_ENV
-
-      - name: Save generated version to file
-        id: save-version
-        if: env.has_label == 'true'
+      - name: Create annotated tag (skip if SKIP_PUSH=true)
         run: |
-          echo "${{ env.version }}" > .github/autobuild_version
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git add .github/autobuild_version
-          git commit -m "Update autobuild_version"
-          git push origin $GITHUB_REF
+          if [ "$SKIP_PUSH" = "true" ]; then
+            exit 0
+          fi
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git tag -a "$VERSION" -m "autobuild $VERSION"
+          git push origin "$VERSION"
 
-      - name: Download dependencies
-        if: env.has_label == 'true'
+      - name: Download upstream dependency (emailproxy.py)
         run: |
-          curl -o emailproxy.py https://raw.githubusercontent.com/simonrob/email-oauth2-proxy/main/emailproxy.py
+          curl -fsSL -o emailproxy.py https://raw.githubusercontent.com/simonrob/email-oauth2-proxy/main/emailproxy.py
 
-      - name: Build image
-        if: env.has_label == 'true'
-        run: |
-          docker build . -t email-oauth2-proxy-docker
-          docker tag email-oauth2-proxy-docker ghcr.io/blacktirion/email-oauth2-proxy-docker:latest
-          docker tag email-oauth2-proxy-docker ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ env.version }}
-          docker tag email-oauth2-proxy-docker blacktirion/email-oauth2-proxy-docker:${{ env.version }}
-          docker tag email-oauth2-proxy-docker blacktirion/email-oauth2-proxy-docker:latest
-
-      - name: Push image
-        if: env.has_label == 'true'
-        run: |
-          docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
-          docker push ghcr.io/blacktirion/email-oauth2-proxy-docker:${{ env.version }}
-          docker push ghcr.io/blacktirion/email-oauth2-proxy-docker:latest
-          docker login docker.io -u ${{ secrets.DOCKERHUB_USERNAME }} -p "${{ secrets.DOCKERHUB_TOKEN }}"
-          docker push blacktirion/email-oauth2-proxy-docker:${{ env.version }}
-          docker push blacktirion/email-oauth2-proxy-docker:latest
-
+      - name: Build and optionally push images (multi-arch)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ env.SKIP_PUSH != 'true' }}
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ env.VERSION }}
+            ${{ env.DOCKERHUB_IMAGE_NAME }}:latest
+            ${{ env.DOCKERHUB_IMAGE_NAME }}:${{ env.VERSION }}
