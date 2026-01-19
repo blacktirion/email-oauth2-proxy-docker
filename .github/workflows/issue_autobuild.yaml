@@ -62,17 +62,19 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Prepare Docker Hub credentials flag
+      - name: Detect Docker Hub credentials
+        id: detect_dockerhub
         run: |
-          # Evaluate presence of Docker Hub secrets and export HAS_DOCKERHUB for conditional step
           if [ -n "${{ secrets.DOCKERHUB_USERNAME }}" ] && [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
-            echo "HAS_DOCKERHUB=true" >> $GITHUB_ENV
+            echo "has_dockerhub=true" >> $GITHUB_OUTPUT
           else
-            echo "HAS_DOCKERHUB=false" >> $GITHUB_ENV
+            echo "has_dockerhub=false" >> $GITHUB_OUTPUT
           fi
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Log in to Docker.io (if credentials provided)
+- name: Log in to Docker.io (if credentials provided)
         if: ${{ steps.detect_dockerhub.outputs.has_dockerhub == 'true' }}
         uses: docker/login-action@v3
         with:
