@@ -15,6 +15,7 @@ concurrency:
 
 env:
   DOCKERHUB_IMAGE_NAME: "docker.io/blacktirion/email-oauth2-proxy-docker"
+  DOCKERHUB_IMAGE_NAME: "docker.io/blacktirion/email-oauth2-proxy-docker"
 
 jobs:
   check-issue-label:
