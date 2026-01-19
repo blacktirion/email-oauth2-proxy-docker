@@ -111,7 +111,6 @@ jobs:
       - name: Create annotated tag (skip if SKIP_PUSH=true)
         run: |
           if [ "$SKIP_PUSH" = "true" ]; then
-            echo "Skipping tag creation because SKIP_PUSH=true"
             exit 0
           fi
           git config user.email "github-actions[bot]@users.noreply.github.com"
