@@ -13,6 +13,9 @@ concurrency:
   group: 'autobuild-${{ github.repository }}'
   cancel-in-progress: false
 
+env:
+  DOCKERHUB_IMAGE_NAME: "docker.io/blacktirion/email-oauth2-proxy-docker"
+
 jobs:
   check-issue-label:
     runs-on: ubuntu-latest
@@ -131,5 +134,5 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ env.VERSION }}
-            docker.io/${{ github.repository }}:latest
-            docker.io/${{ github.repository }}:${{ env.VERSION }}
+            ${{ env.DOCKERHUB_IMAGE_NAME }}:latest
+            ${{ env.DOCKERHUB_IMAGE_NAME }}:${{ env.VERSION }}
