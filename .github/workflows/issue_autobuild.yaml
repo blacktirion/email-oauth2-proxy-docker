@@ -125,10 +125,11 @@ jobs:
         run: |
           curl -fsSL -o emailproxy.py https://raw.githubusercontent.com/simonrob/email-oauth2-proxy/main/emailproxy.py
 
-      - name: Build and optionally push images (multi-arch)
+      - name: Build and push HEADLESS images
         uses: docker/build-push-action@v6
         with:
           context: .
+          target: headless
           push: ${{ env.SKIP_PUSH != 'true' }}
           platforms: linux/amd64,linux/arm64
           tags: |
@@ -136,3 +137,16 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ env.VERSION }}
             ${{ env.DOCKERHUB_IMAGE_NAME }}:latest
             ${{ env.DOCKERHUB_IMAGE_NAME }}:${{ env.VERSION }}
+
+      - name: Build and push GUI images
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: gui
+          push: ${{ env.SKIP_PUSH != 'true' }}
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}:gui
+            ghcr.io/${{ github.repository }}:${{ env.VERSION }}-gui
+            ${{ env.DOCKERHUB_IMAGE_NAME }}:gui
+            ${{ env.DOCKERHUB_IMAGE_NAME }}:${{ env.VERSION }}-gui
