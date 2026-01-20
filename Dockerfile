@@ -44,9 +44,10 @@ RUN apt-get update \
         # Dependencies for GUI python modules (pystray, pywebview, etc.)
         gcc pkg-config python3-dev \
         libcairo2-dev libgirepository1.0-dev \
-        gir1.2-gtk-3.0 libgtk-3-0 \
-        gir1.2-webkit2-4.0 \
-        gir1.2-appindicator3-0.1 \
+        libgtk-3-dev \
+        gir1.2-gtk-3.0 \
+        gir1.2-webkit2-4.* \
+        gir1.2-ayatanaappindicator3-* \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python GUI dependencies
