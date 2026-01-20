@@ -42,19 +42,21 @@ RUN apt-get update \
         xdg-utils \
         fonts-dejavu \
         # Dependencies for GUI python modules (pystray, pywebview, etc.)
-        gcc pkg-config python3-dev \
-        libcairo2-dev libgirepository1.0-dev \
-        libgtk-3-dev \
+        # --- Runtime Dependencies ---
         gir1.2-gtk-3.0 \
         gir1.2-webkit2-4.* \
         gir1.2-ayatanaappindicator3-* \
-        gobject-introspection \
-        libgirepository1.0-dev \
-        # Additional packages for GObject type libraries
         gir1.2-freedesktop \
         gir1.2-glib-2.0 \
+        gir1.2-girepository-2.0 \
+        # --- Build Dependencies (removed later) ---
+        gcc pkg-config python3-dev cmake \
+        libcairo2-dev \
+        libgtk-3-dev \
         libglib2.0-dev \
-        cmake \
+        libgirepository1.0-dev \
+        libgirepository-2.0-dev \
+        gobject-introspection \
     # Install Python GUI dependencies (pycairo/PyGObject need build tools)
     && pip install --no-cache-dir \
         pycairo \
@@ -67,7 +69,9 @@ RUN apt-get update \
     # Cleanup build tools
     && apt-get purge -y --auto-remove \
         gcc pkg-config python3-dev cmake \
-        libcairo2-dev libgirepository1.0-dev libgtk-3-dev libglib2.0-dev \
+        libcairo2-dev libgtk-3-dev libglib2.0-dev \
+        libgirepository1.0-dev libgirepository-2.0-dev \
+        gobject-introspection \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
