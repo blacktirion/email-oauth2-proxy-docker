@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Core tools (kept for debugging or future needs, curl removed from mandatory run)
+# Core tools (kept for debugging or future needs)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -41,7 +41,23 @@ RUN apt-get update \
         chromium \
         xdg-utils \
         fonts-dejavu \
+        # Dependencies for GUI python modules (pystray, pywebview, etc.)
+        gcc pkg-config python3-dev \
+        libcairo2-dev libgirepository1.0-dev \
+        gir1.2-gtk-3.0 libgtk-3-0 \
+        gir1.2-webkit2-4.0 \
+        gir1.2-appindicator3-0.1 \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Python GUI dependencies
+# PyGObject is required for GTK integration (pystray/pywebview on Linux)
+RUN pip install --no-cache-dir \
+    pystray \
+    Pillow \
+    timeago \
+    pywebview \
+    packaging \
+    PyGObject
 
 ENV DISPLAY=:1 \
     BROWSER=/usr/bin/chromium
