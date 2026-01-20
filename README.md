@@ -1,3 +1,6 @@
+### EXPERIMENTAL GUI MODE - Use at your own risk. Not officially supported, and currently testing.
+
+
 # Email OAuth 2.0 Proxy - Docker
 Containerized Version of [Email OAuth 2.0 Proxy](https://github.com/simonrob/email-oauth2-proxy/) This runs in --no-gui mode.
 
@@ -14,45 +17,6 @@ The config file should be named `emailproxy.config` and placed in whichever fold
 
 The email OAuth2 proxy can be run using either Docker compose or Docker run.
 
-### GUI mode (optional)
-
-For environments that need an embedded browser (noVNC) to complete OAuth on a headless host, build or pull the GUI target and enable `GUI_MODE=true`. The container will start Xvfb, a lightweight window manager, Chromium, x11vnc, and noVNC on port 6080. Access the browser at `http://localhost:6080` and finish the provider’s login flow there.
-
-If you build locally, you must first download the upstream script:
-
-```bash
-curl -fsSL -o emailproxy.py https://raw.githubusercontent.com/simonrob/email-oauth2-proxy/main/emailproxy.py
-docker build --target gui -t emailproxy-gui .
-```
-
-Then a compose example:
-
-``` yaml
-version: '3.7'
-
-services:
-  emailproxy:
-    image: emailproxy-gui
-    container_name: emailproxy-gui
-    volumes:
-      - /path/to/config:/config
-    ports:
-      - "1993:1993"
-      - "8080:8080"  # if using local-server auth
-      - "6080:6080"  # noVNC browser
-      # - "5900:5900"  # raw VNC (optional, see DISABLE_RAW_VNC below)
-    environment:
-      GUI_MODE: "true"
-      # Set DISABLE_RAW_VNC to true to disable the raw VNC server (x11vnc) and only expose noVNC:
-      DISABLE_RAW_VNC: "true"
-      LOGFILE: "true"
-      CACHE_STORE: /config/credstore.config
-      # LOCAL_SERVER_AUTH is automatically enabled in GUI mode unless explicitly set otherwise
-      DEBUG: "true"
-```
-
-
-**Note:** When `GUI_MODE=true`, the container will automatically enable local server auth (`LOCAL_SERVER_AUTH=true`) unless you explicitly set `LOCAL_SERVER_AUTH` to another value. This ensures the GUI browser flow works out of the box.
 
 ### Docker compose
 
@@ -108,6 +72,11 @@ docker run -d \
 
 This will create a new container with the email OAuth2 proxy and start it. The proxy will be listening on port 1993.
 
+### GUI mode (optional)
+
+For environments that need an embedded browser (noVNC) to complete OAuth on a headless host, build or pull the GUI target and enable `GUI_MODE=true`. The container will start Xvfb, a lightweight window manager, Chromium, x11vnc, and noVNC on port 6080. Access the browser at `http://localhost:6080` and finish the provider’s login flow there.
+
+
 ### Windows Support 
 @gerneio [opened an issue regarding native windows support](https://github.com/blacktirion/email-oauth2-proxy-docker/issues/22). I do not use containers in windows, but he did put together a basic guide that can get you started. I will leave that issue open and pinned for now, just in case there are other questions. I cannot support this directly, as I am not familiar with windows docker images, but I will reply in thread if questions are asked. It seems pretty straightforward.
 
@@ -130,3 +99,41 @@ This will create a new container with the email OAuth2 proxy and start it. The p
 |Ports| `1993:1993` | Allows the docker daemon to forward all requests to the container on this port. This may change, depending on if you are using POP3 or other proxy methods. This particular method is for IMAP. |
 |Ports| `8080:80` | Allows the docker daemon to forward all requests to the container on port 8080 and map to the proxy on port 80. Useful for the `LOCAL_SERVER_AUTH` flag. |
 |Image| `ghcr.io/blacktirion/email-oauth2-proxy-docker` or `blacktirion/email-oauth2-proxy-docker` | The location/name of the image. This is published on both Github Container Repository as well as Docker Hub.|
+
+
+## Building the GUI image locally
+If you build locally, you must first download the upstream script:
+
+```bash
+curl -fsSL -o emailproxy.py https://raw.githubusercontent.com/simonrob/email-oauth2-proxy/main/emailproxy.py
+docker build --target gui -t emailproxy-gui .
+```
+
+Then a compose example:
+
+``` yaml
+version: '3.7'
+
+services:
+  emailproxy:
+    image: emailproxy-gui
+    container_name: emailproxy-gui
+    volumes:
+      - /path/to/config:/config
+    ports:
+      - "1993:1993"
+      - "8080:8080"  # if using local-server auth
+      - "6080:6080"  # noVNC browser
+      # - "5900:5900"  # raw VNC (optional, see DISABLE_RAW_VNC below)
+    environment:
+      GUI_MODE: "true"
+      # Set DISABLE_RAW_VNC to true to disable the raw VNC server (x11vnc) and only expose noVNC:
+      DISABLE_RAW_VNC: "true"
+      LOGFILE: "true"
+      CACHE_STORE: /config/credstore.config
+      # LOCAL_SERVER_AUTH is automatically enabled in GUI mode unless explicitly set otherwise
+      DEBUG: "true"
+```
+
+
+**Note:** When `GUI_MODE=true`, the container will automatically enable local server auth (`LOCAL_SERVER_AUTH=true`) unless you explicitly set `LOCAL_SERVER_AUTH` to another value. This ensures the GUI browser flow works out of the box.
