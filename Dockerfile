@@ -53,6 +53,7 @@ RUN apt-get update \
         # Additional packages for GObject type libraries
         gir1.2-freedesktop \
         gir1.2-glib-2.0 \
+        libglib2.0-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
