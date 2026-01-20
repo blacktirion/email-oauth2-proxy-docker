@@ -63,8 +63,14 @@ if [ "$GUI_MODE" = "true" ]; then
     fi
     if command -v websockify >/dev/null 2>&1; then
         NOVNC_WEB_ROOT=${NOVNC_WEB_ROOT:-/usr/share/novnc}
-        websockify --web "$NOVNC_WEB_ROOT" "$NOVNC_PORT" $VNC_TARGET >/tmp/novnc.log 2>&1 &
+        # Point to the specific vnc.html to avoid directory listing
+        websockify --web "$NOVNC_WEB_ROOT" "$NOVNC_PORT" $VNC_TARGET --target-config="$NOVNC_WEB_ROOT/vnc.html" >/tmp/novnc.log 2>&1 &
     fi
+fi
+# Start tint2 (system tray) if pystray/Openbox needs a tray manager (Wait slightly for Openbox)
+if [ "$GUI_MODE" = "true" ] && command -v tint2 >/dev/null 2>&1; then
+   sleep 1
+   tint2 >/tmp/tint2.log 2>&1 &
 fi
 
 # Execute the Python script with arguments

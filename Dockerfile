@@ -41,6 +41,7 @@ RUN apt-get update \
         chromium \
         xdg-utils \
         fonts-dejavu \
+        tint2 \
         # Dependencies for GUI python modules (pystray, pywebview, etc.)
         # --- Runtime Dependencies ---
         gir1.2-gtk-3.0 \
