@@ -54,20 +54,22 @@ RUN apt-get update \
         gir1.2-freedesktop \
         gir1.2-glib-2.0 \
         libglib2.0-dev \
+        cmake \
+    # Install Python GUI dependencies (pycairo/PyGObject need build tools)
+    && pip install --no-cache-dir \
+        pycairo \
+        PyGObject \
+        pystray \
+        Pillow \
+        timeago \
+        pywebview \
+        packaging \
+    # Cleanup build tools
+    && apt-get purge -y --auto-remove \
+        gcc pkg-config python3-dev cmake \
+        libcairo2-dev libgirepository1.0-dev libgtk-3-dev libglib2.0-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-# Install Python GUI dependencies
-# PyGObject is required for GTK integration (pystray/pywebview on Linux)
-# pycairo is a build dependency for PyGObject not always picked up automatically
-RUN pip install --no-cache-dir \
-    pycairo \
-    PyGObject \
-    pystray \
-    Pillow \
-    timeago \
-    pywebview \
-    packaging
 
 ENV DISPLAY=:1 \
     BROWSER=/usr/bin/chromium
