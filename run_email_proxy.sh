@@ -13,11 +13,9 @@ LOCAL_SERVER_AUTH_VALUE=""
 DEBUG_VALUE=""
 CACHE_STORE_VALUE=""
 LOG_FILE_PATH=""
-GUI_FLAG="--no-gui"
-
+GUI_FLAG=""
 # GUI mode flips to --gui and typically should run in foreground
 if [ "$GUI_MODE" = "true" ]; then
-    GUI_FLAG="--gui"
     FOREGROUND="true"
     # Default to local server auth in GUI mode if not specified
     if [ -z "$LOCAL_SERVER_AUTH" ]; then
@@ -71,10 +69,10 @@ fi
 
 # Execute the Python script with arguments
 if [ "$FOREGROUND" = "true" ]; then
-    exec python /app/emailproxy.py $GUI_FLAG --log-file "$LOG_FILE_PATH" --config-file /config/emailproxy.config $CACHE_STORE_VALUE $DEBUG_VALUE $EXTERNAL_AUTH_VALUE $LOCAL_SERVER_AUTH_VALUE
+    exec python /app/emailproxy.py --log-file "$LOG_FILE_PATH" --config-file /config/emailproxy.config $CACHE_STORE_VALUE $DEBUG_VALUE $EXTERNAL_AUTH_VALUE $LOCAL_SERVER_AUTH_VALUE
 fi
 
-python /app/emailproxy.py $GUI_FLAG --log-file "$LOG_FILE_PATH" --config-file /config/emailproxy.config $CACHE_STORE_VALUE $DEBUG_VALUE $EXTERNAL_AUTH_VALUE $LOCAL_SERVER_AUTH_VALUE &
+python /app/emailproxy.py --no-gui --log-file "$LOG_FILE_PATH" --config-file /config/emailproxy.config $CACHE_STORE_VALUE $DEBUG_VALUE $EXTERNAL_AUTH_VALUE $LOCAL_SERVER_AUTH_VALUE &
 
 # Wait for the log file to be created
 while [ ! -f "$LOG_FILE_PATH" ]; do
