@@ -48,17 +48,22 @@ RUN apt-get update \
         gir1.2-gtk-3.0 \
         gir1.2-webkit2-4.* \
         gir1.2-ayatanaappindicator3-* \
+        gobject-introspection \
+        libgirepository1.0-dev \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python GUI dependencies
 # PyGObject is required for GTK integration (pystray/pywebview on Linux)
+# pycairo is a build dependency for PyGObject not always picked up automatically
 RUN pip install --no-cache-dir \
+    pycairo \
+    PyGObject \
     pystray \
     Pillow \
     timeago \
     pywebview \
-    packaging \
-    PyGObject
+    packaging
 
 ENV DISPLAY=:1 \
     BROWSER=/usr/bin/chromium
