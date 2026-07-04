@@ -80,7 +80,7 @@ This will create a new container with the email OAuth2 proxy and start it. The p
 |Environment| `DEBUG=true` | Enables debug mode in logging. |
 |Environment| `LOGFILE=true` | Outputs logs to a file in the config directory. Logs also still stream to docker logging daemon. |
 |Environment| `LOCAL_SERVER_AUTH=true` | Puts the proxy in local server auth mode. See the proxy github for details. Defaults to external auth. |
-|Environment| `CACHE_STORAGE=<path/to/file or AWS string>` | Allows storing the tokens and secrets in either a separate file or AWS Secrets Manager. If it is a file, it must be /config/<filename>. See the main proxy github for details.|
+|Environment| `CACHE_STORE=<path/to/file or AWS string>` | Allows storing the tokens and secrets in either a separate file or AWS Secrets Manager. If it is a file, it must be /config/<filename>. See the main proxy github for details.|
 |Volume| `/path/to/host/config:/config` | Maps the `/config` directory in the container to a local folder/location. |
 |Ports| `1993:1993` | Allows the docker daemon to forward all requests to the container on this port. This may change, depending on if you are using POP3 or other proxy methods. This particular method is for IMAP. |
 |Ports| `8080:80` | Allows the docker daemon to forward all requests to the container on port 8080 and map to the proxy on port 80. Useful for the `LOCAL_SERVER_AUTH` flag. |
